@@ -129,8 +129,8 @@ function updateUI() {
     // Расчет процента аккумулятора (0% - 100%)
     let batVal = Math.round(((b - DEBT_LIMIT) / (0 - DEBT_LIMIT)) * 100);
     batVal = Math.max(5, Math.min(100, batVal));
-    batteryPercent.textContent = ${batVal}%;
-    batteryFill.style.width = ${batVal}%;
+    batteryPercent.textContent = `${batVal}%`;
+    batteryFill.style.width = `${batVal}%`;
 
     // Финтех-статусы и подсветка
     if (b >= 0) {
