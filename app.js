@@ -166,8 +166,8 @@ function updateUI() {
 
     let totalMonth = 0;
     Object.values(state.records).forEach(r => totalMonth += r.hours);
-    monthlyProgress.textContent = ${totalMonth.toFixed(0)} / 240 ч;
-    penaltyDisplay.textContent = ${state.penaltyHours.toFixed(1)} ч;
+    monthlyProgress.textContent = `${totalMonth.toFixed(0)} / 240 ч`;
+    penaltyDisplay.textContent = `${state.penaltyHours.toFixed(1)} ч`;
 
     renderCalendar();
     renderHistory();
@@ -182,7 +182,7 @@ function renderCalendar() {
     const month = now.getMonth();
 
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-    document.getElementById('calendarMonthTitle').textContent = ${monthNames[month]} ${year};
+    document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]}${year}`;
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -199,14 +199,14 @@ function renderCalendar() {
         const cell = document.createElement('div');
         cell.className = 'matrix-cell';
         
-        const dateFormatted = ${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')};
+        const dateFormatted = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         cell.textContent = d;
 
         if (state.records[dateFormatted]) {
             const h = state.records[dateFormatted].hours;
             const sub = document.createElement('span');
             sub.className = 'cell-hours';
-            sub.textContent = ${h}h;
+            sub.textContent = `${h}h`;
             cell.appendChild(sub);
 
             if (h >= TARGET_DAILY) cell.classList.add('status-green');
@@ -245,15 +245,15 @@ function renderHistory() {
         if (rec.hours < TARGET_DAILY) { color = 'var(--neon-amber)'; tagText = 'ДЕФИЦИТ'; }
         if (rec.hours < MIN_CRITICAL) { color = 'var(--neon-red)'; tagText = 'ШТРАФ'; }
 
-        div.innerHTML = 
-            <div>
-                <strong>${rec.hours.toFixed(1)} ч сна</strong>
-                <div class="history-date-sub">${dateStr} ${rec.penalty > 0 ? <span style="color:var(--neon-red)">(+2ч штраф)</span> : ''}</div>
-            </div>
-            <div class="history-tag" style="color: ${color}">
-                ${tagText}
-            </div>
-        ;
+        div.innerHTML = `
+    <div>
+        <strong>${rec.hours.toFixed(1)} ч сна</strong>
+        <div class="history-date-sub">${dateStr}${rec.penalty > 0 ? '<span style="color:var(--neon-red)">(+2ч штраф)</span>' : ''}</div>
+    </div>
+    <div class="history-tag" style="color: ${color}">
+        ${tagText}
+    </div>
+`;
         list.appendChild(div);
     });
 }
