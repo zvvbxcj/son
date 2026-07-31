@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLEEP BANK — Кредитный Банк Сна</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Верхняя панель -->
+        <header class="top-bar">
+            <div class="brand">
+                <div class="logo-icon">🏦</div>
+                <div class="brand-text">
+                    <h1>SLEEP<span>BANK</span></h1>
+                    <p class="subtitle">Biological Reserve System</p>
+                </div>
+            </div>
+            <div class="streak-badge" id="streakBadge">
+                <span class="streak-icon">🔥</span>
+                <span id="streakCount">0</span> ДНЕЙ
+            </div>
+        </header>
+
+        <!-- Главная карточка Баланса и Индикатор Батареи -->
+        <section class="card hero-card" id="heroCard">
+            <div class="hero-header">
+                <span class="label">КРЕДИТНЫЙ БАЛАНС СНА</span>
+                <span class="rating-tag" id="ratingTag">AAA+ ЭЛИТА</span>
+            </div>
+            
+            <div class="balance-display">
+                <span class="balance-number" id="balanceDisplay">0.0</span>
+                <span class="balance-unit">ч</span>
+            </div>
+
+            <!-- Визуальный Аккумулятор ЦНС -->
+            <div class="battery-wrapper">
+                <div class="battery-header">
+                    <span>ЗАРЯД ЦНС:</span>
+                    <strong id="batteryPercent">100%</strong>
+                </div>
+                <div class="battery-container">
+                    <div class="battery-fill" id="batteryFill"></div>
+                </div>
+            </div>
+
+            <div class="status-message" id="statusMessage">
+                Загрузка данных вашей нервной системы...
+            </div>
+
+            <div class="credit-bar-container">
+                <div class="credit-bar-fill" id="creditBarFill"></div>
+            </div>
+            <div class="credit-labels">
+                <span>ДЕФОЛТ (-30ч)</span>
+                <span>БАЛАНС (0ч)</span>
+            </div>
+        </section>
+
+        <!-- Модуль депозита с выбором даты -->
+        <section class="card deposit-card">
+            <h2>Внести Депозит Сна</h2>
+            
+            <!-- Выбор даты -->
+            <div class="date-picker-group">
+                <label for="dateInput">Дата транзакции:</label>
+                <input type="date" id="dateInput" class="custom-date-input">
+            </div>
+            
+            <div class="slider-group">
+                <div class="slider-value-display">
+                    <span id="sliderValue">8.0</span> <small>часов</small>
+                </div>
+                <input type="range" id="sleepInput" min="0" max="14" step="0.5" value="8">
+            </div>
+
+            <div class="presets-grid">
+                <button class="preset-btn" onclick="setPreset(8)">8ч (Норма)</button>
+                <button class="preset-btn" onclick="setPreset(6)">6ч (Легкий долг)</button>
+                <button class="preset-btn" onclick="setPreset(3)">3ч (Авария)</button>
+                <button class="preset-btn danger-preset" onclick="setPreset(0)">0ч (БЕССОННИЦА)</button>
+            </div>
+
+            <button class="btn-primary" id="submitSleepBtn">
+                <span class="btn-text">ПОДТВЕРДИТЬ ТРАНЗАКЦИЮ</span>
+            </button>
+        </section>
+
+        <!-- КАЛЕНДАРЬ СНА (Интерактивная сетка) -->
+<section class="card calendar-card">
+            <div class="calendar-header">
+                <h2>Календарь Наблюдений</h2>
+                <span class="calendar-month-title" id="calendarMonthTitle">Июль 2026</span>
+            </div>
+            <div class="calendar-weekdays">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- Дни генерируются через JS -->
+            </div>
+        </section>
+
+        <!-- Статистика -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-icon">📅</span>
+                <span class="stat-label">За текущий месяц</span>
+                <span class="stat-value" id="monthlyProgress">0 / 240 ч</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">⚠️</span>
+                <span class="stat-label">Штрафные часы</span>
+                <span class="stat-value penalty-text" id="penaltyDisplay">0 ч</span>
+            </div>
+        </section>
+
+        <!-- История Операций -->
+        <section class="card history-card">
+            <div class="history-header">
+                <h2>История Операций</h2>
+                <button class="btn-reset" id="resetBtn">Сброс</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="empty-state">История пуста. Внесите первый депозит!</div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
