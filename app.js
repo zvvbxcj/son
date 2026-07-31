@@ -1,29 +1,32 @@
 /**
- * SLEEP BANK — Математическое ядро и Геймификация
+ * SLEEP BANK — Biological Credit Engine
  */
 
-const TARGET_DAILY = 8.0;      // Норма в день
-const MIN_CRITICAL = 3.0;      // Аварийный порог
-const PENALTY_EXTRA = 2.0;     // Штраф за бессонницу (< 3ч)
-const DEBT_LIMIT = -30.0;      // Предел банкротства
+const TARGET_DAILY = 8.0;      // Дневная норма
+const MIN_CRITICAL = 3.0;      // Нижний лимит сна без штрафа
+const PENALTY_EXTRA = 2.0;     // Штрафной объем
+const DEBT_LIMIT = -30.0;      // Лимит банкротства
 
-// Состояние приложения
 let state = {
-    balance: 0.0,              // Баланс (+ или -)
-    totalMonthHours: 0.0,      // Накоплено за месяц
-    penaltyHours: 0.0,         // Всего штрафов начислено
-    streak: 0,                 // Стрик дней
-    history: []                // История транзакций
+    records: {}, 
+    streak: 0,
+    penaltyHours: 0,
+    currentBalance: 0
 };
 
-// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
+    initDatePicker();
     setupEventListeners();
     updateUI();
 });
 
-// Настройка кнопок и слайдера
+function initDatePicker() {
+    const dateInput = document.getElementById('dateInput');
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+}
+
 function setupEventListeners() {
     const slider = document.getElementById('sleepInput');
     const sliderDisplay = document.getElementById('sliderValue');
@@ -35,20 +38,21 @@ function setupEventListeners() {
     });
 
     submitBtn.addEventListener('click', () => {
+        const date = document.getElementById('dateInput').value;
         const hours = parseFloat(slider.value);
-        depositSleep(hours);
+        if (!date) return alert('Укажите дату транзакции!');
+        saveSleepEntry(date, hours);
     });
 
     resetBtn.addEventListener('click', () => {
-        if (confirm('Сбросить всю историю и начать заново?')) {
+        if (confirm('Обнулить всю историю Sleep Bank?')) {
             localStorage.clear();
-            state = { balance: 0.0, totalMonthHours: 0.0, penaltyHours: 0.0, streak: 0, history: [] };
+            state = { records: {}, streak: 0, penaltyHours: 0, currentBalance: 0 };
             updateUI();
         }
     });
 }
 
-// Установка пресетов
 function setPreset(hours) {
     const slider = document.getElementById('sleepInput');
     const sliderDisplay = document.getElementById('sliderValue');
@@ -56,163 +60,212 @@ function setPreset(hours) {
     sliderDisplay.textContent = hours.toFixed(1);
 }
 
-// ОСНОВНАЯ ЛОГИКА ДЕПОЗИТА
-function depositSleep(hours) {
-    let delta = 0;
+function saveSleepEntry(dateStr, hours) {
     let penalty = 0;
-    let type = 'normal';
-
-    if (hours >= TARGET_DAILY) {
-        // Превышение или норма: гасит долг (если есть), пересон сверх 0 баланса сгорает
-        const surplus = hours - TARGET_DAILY;
-        if (state.balance < 0) {
-            state.balance = Math.min(0, state.balance + surplus);
-        }
-        state.streak += 1;
-        type = 'success';
-    } else if (hours >= MIN_CRITICAL) {
-        // Умеренный долг (от 3 до 8 часов)
-        delta = TARGET_DAILY - hours;
-        state.balance -= delta;
-        state.streak = 0; // Стрик сброшен
-        type = 'warning';
-    } else {
-        // КРИТИЧЕСКИЙ ДЕФИЦИТ (< 3 часов или 0)
-        // Включается аварийный штраф +2 часа невозвратного долга
-        const baseDeficit = TARGET_DAILY - hours;
+    if (hours < MIN_CRITICAL) {
         penalty = PENALTY_EXTRA;
-        delta = baseDeficit + penalty;
-        
-        state.balance -= delta;
-        state.penaltyHours += penalty;
-        state.streak = 0;
-        type = 'danger';
     }
 
-    state.totalMonthHours += hours;
-
-    // Запись в историю
-    const entry = {
-        id: Date.now(),
-        date: new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+    state.records[dateStr] = {
         hours: hours,
-        balanceAfter: state.balance,
         penalty: penalty,
-        type: type
+        timestamp: new Date(dateStr).getTime()
     };
 
-    state.history.unshift(entry);
+    recalculateGlobalState();
     saveState();
     updateUI();
 }
 
-// ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI)
+function recalculateGlobalState() {
+    let totalBalance = 0;
+    let totalPenalty = 0;
+    let currentStreak = 0;
+
+    const sortedDates = Object.keys(state.records).sort();
+
+    sortedDates.forEach(date => {
+        const rec = state.records[date];
+        const h = rec.hours;
+
+        if (h >= TARGET_DAILY) {
+            const surplus = h - TARGET_DAILY;
+            if (totalBalance < 0) {
+                totalBalance = Math.min(0, totalBalance + surplus);
+            }
+            currentStreak += 1;
+        } else if (h >= MIN_CRITICAL) {
+            totalBalance -= (TARGET_DAILY - h);
+            currentStreak = 0;
+        } else {
+            const deficit = (TARGET_DAILY - h) + rec.penalty;
+            totalBalance -= deficit;
+            totalPenalty += rec.penalty;
+            currentStreak = 0;
+        }
+    });
+
+    state.streak = currentStreak;
+    state.penaltyHours = totalPenalty;
+    state.currentBalance = totalBalance;
+}
+
 function updateUI() {
     const balanceDisplay = document.getElementById('balanceDisplay');
+    const balanceSign = document.getElementById('balanceSign');
     const statusMessage = document.getElementById('statusMessage');
     const ratingTag = document.getElementById('ratingTag');
-    const creditBarFill = document.getElementById('creditBarFill');
+    const batteryFill = document.getElementById('batteryFill');
+    const batteryPercent = document.getElementById('batteryPercent');
     const streakCount = document.getElementById('streakCount');
     const monthlyProgress = document.getElementById('monthlyProgress');
     const penaltyDisplay = document.getElementById('penaltyDisplay');
 
-    // 1. Отображение Баланса
-    const b = state.balance;
-    balanceDisplay.textContent = (b > 0 ? '+' : '') + b.toFixed(1);
-// 2. Цветовая гамма и психологические статусы
+    const b = state.currentBalance || 0;
+    
+    // Форматирование цифры баланса
+    balanceSign.textContent = b > 0 ? '+' : '';
+    balanceDisplay.textContent = b.toFixed(1);
+// Расчет процента аккумулятора (0% - 100%)
+    let batVal = Math.round(((b - DEBT_LIMIT) / (0 - DEBT_LIMIT)) * 100);
+    batVal = Math.max(5, Math.min(100, batVal));
+    batteryPercent.textContent = ${batVal}%;
+    batteryFill.style.width = ${batVal}%;
+
+    // Финтех-статусы и подсветка
     if (b >= 0) {
-        balanceDisplay.style.color = 'var(--accent-green)';
-        ratingTag.textContent = 'AAA+ ИДЕАЛ';
-        ratingTag.style.background = 'rgba(16, 185, 129, 0.15)';
-        ratingTag.style.color = 'var(--accent-green)';
-        ratingTag.style.borderColor = 'var(--accent-green)';
-        statusMessage.textContent = '🟢 Мозг полностью очищен. Высокий уровень дофамина и концентрации!';
+        balanceDisplay.style.color = 'var(--neon-green)';
+        batteryFill.style.backgroundColor = 'var(--neon-green)';
+        batteryFill.style.boxShadow = '0 0 12px var(--neon-green-glow)';
+        ratingTag.textContent = 'AAA PLATINUM';
+        ratingTag.style.color = 'var(--neon-green)';
+        ratingTag.style.borderColor = 'var(--neon-green)';
+        ratingTag.style.background = 'rgba(0, 255, 157, 0.12)';
+        statusMessage.textContent = '⚡ Мозг в идеальном состоянии. Ресурс ЦНС на максимуме!';
     } else if (b >= -10.0) {
-        balanceDisplay.style.color = 'var(--accent-gold)';
-        ratingTag.textContent = 'BBB КРЕДИТОР';
-        ratingTag.style.background = 'rgba(245, 158, 11, 0.15)';
-        ratingTag.style.color = 'var(--accent-gold)';
-        ratingTag.style.borderColor = 'var(--accent-gold)';
-        statusMessage.textContent = '🟡 Мелкий долг сна. Компенсируйте за ближайшие 48 часов, чтобы не просесть.';
-    } else if (b > DEBT_LIMIT) {
-        balanceDisplay.style.color = 'var(--accent-red)';
-        ratingTag.textContent = 'C- ДЕФИЦИТ';
-        ratingTag.style.background = 'rgba(239, 68, 68, 0.15)';
-        ratingTag.style.color = 'var(--accent-red)';
-        ratingTag.style.borderColor = 'var(--accent-red)';
-        statusMessage.textContent = '🔴 Высокая инерция сна! ЦНС работает на износ. Требуется срочный доспать!';
+        balanceDisplay.style.color = 'var(--neon-amber)';
+        batteryFill.style.backgroundColor = 'var(--neon-amber)';
+        batteryFill.style.boxShadow = '0 0 12px var(--neon-amber-glow)';
+        ratingTag.textContent = 'BBB CREDIT';
+        ratingTag.style.color = 'var(--neon-amber)';
+        ratingTag.style.borderColor = 'var(--neon-amber)';
+        ratingTag.style.background = 'rgba(255, 183, 3, 0.12)';
+        statusMessage.textContent = '⚠️ Небольшой овердрафт. Рекомендуется закрыть долг за 48 часов.';
     } else {
-        balanceDisplay.style.color = 'var(--accent-red)';
-        ratingTag.textContent = 'F БАНКРОТСТВО';
-        ratingTag.style.background = 'var(--accent-red)';
-        ratingTag.style.color = '#fff';
-        statusMessage.textContent = '💀 СИСТЕМНЫЙ ДЕФОЛТ! Иммунитет и мозг в критической зоне. Отложите дела!';
+        balanceDisplay.style.color = 'var(--neon-red)';
+        batteryFill.style.backgroundColor = 'var(--neon-red)';
+        batteryFill.style.boxShadow = '0 0 12px var(--neon-red-glow)';
+        ratingTag.textContent = 'DEFAULTS WARNING';
+        ratingTag.style.color = 'var(--neon-red)';
+        ratingTag.style.borderColor = 'var(--neon-red)';
+        ratingTag.style.background = 'rgba(255, 51, 102, 0.12)';
+        statusMessage.textContent = '💀 КРИТИЧЕСКИЙ ДЕФИЦИТ! Ткани и ЦНС работают на износ. Требуется отсып!';
     }
 
-    // 3. Прогресс-бар
-    // Диапазон от -30 до 0
-    let percentage = ((b - DEBT_LIMIT) / (0 - DEBT_LIMIT)) * 100;
-    percentage = Math.max(5, Math.min(100, percentage));
-    creditBarFill.style.width = ${percentage}%;
-
-    if (b >= 0) {
-        creditBarFill.style.backgroundColor = 'var(--accent-green)';
-    } else if (b >= -10) {
-        creditBarFill.style.backgroundColor = 'var(--accent-gold)';
-    } else {
-        creditBarFill.style.backgroundColor = 'var(--accent-red)';
-    }
-
-    // 4. Дополнительные метрики
     streakCount.textContent = state.streak;
-    monthlyProgress.textContent = ${state.totalMonthHours.toFixed(0)} / 240 ч;
+
+    let totalMonth = 0;
+    Object.values(state.records).forEach(r => totalMonth += r.hours);
+    monthlyProgress.textContent = ${totalMonth.toFixed(0)} / 240 ч;
     penaltyDisplay.textContent = ${state.penaltyHours.toFixed(1)} ч;
 
-    // 5. Рендер истории
+    renderCalendar();
     renderHistory();
 }
 
-// Рендер Списка Истории
+function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+    document.getElementById('calendarMonthTitle').textContent = ${monthNames[month]} ${year};
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let shift = firstDay === 0 ? 6 : firstDay - 1;
+
+    for (let i = 0; i < shift; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'matrix-cell empty';
+        grid.appendChild(emptyCell);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'matrix-cell';
+        
+        const dateFormatted = ${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')};
+        cell.textContent = d;
+
+        if (state.records[dateFormatted]) {
+            const h = state.records[dateFormatted].hours;
+            const sub = document.createElement('span');
+            sub.className = 'cell-hours';
+            sub.textContent = ${h}h;
+            cell.appendChild(sub);
+
+            if (h >= TARGET_DAILY) cell.classList.add('status-green');
+            else if (h >= MIN_CRITICAL) cell.classList.add('status-amber');
+            else cell.classList.add('status-red');
+        }
+
+        cell.addEventListener('click', () => {
+            document.getElementById('dateInput').value = dateFormatted;
+            if (state.records[dateFormatted]) {
+                setPreset(state.records[dateFormatted].hours);
+            }
+        });
+grid.appendChild(cell);
+    }
+}
+
 function renderHistory() {
     const list = document.getElementById('historyList');
     list.innerHTML = '';
 
-    if (state.history.length === 0) {
-        list.innerHTML = '<div class="empty-state">История пуста. Внесите первый депозит!</div>';
+    const sortedDates = Object.keys(state.records).sort().reverse();
+
+    if (sortedDates.length === 0) {
+        list.innerHTML = '<div class="empty-state">Операций пока нет. Внесите первый депозит!</div>';
         return;
     }
 
-    state.history.forEach(item => {
+    sortedDates.forEach(dateStr => {
+        const rec = state.records[dateStr];
         const div = document.createElement('div');
-        div.className = 'history-item';
+        div.className = 'history-card-item';
         
-        let color = 'var(--accent-green)';
-        let sign = '+';
-        if (item.type === 'warning') color = 'var(--accent-gold)';
-        if (item.type === 'danger') { color = 'var(--accent-red)'; sign = ''; }
+        let color = 'var(--neon-green)';
+        let tagText = 'УСПЕХ';
+        if (rec.hours < TARGET_DAILY) { color = 'var(--neon-amber)'; tagText = 'ДЕФИЦИТ'; }
+        if (rec.hours < MIN_CRITICAL) { color = 'var(--neon-red)'; tagText = 'ШТРАФ'; }
 
         div.innerHTML = 
             <div>
-                <strong>${item.hours.toFixed(1)} ч сна</strong>
-                <div class="history-date">${item.date} ${item.penalty > 0 ? <span style="color:var(--accent-red)">(+${item.penalty}ч штраф)</span> : ''}</div>
+                <strong>${rec.hours.toFixed(1)} ч сна</strong>
+                <div class="history-date-sub">${dateStr} ${rec.penalty > 0 ? <span style="color:var(--neon-red)">(+2ч штраф)</span> : ''}</div>
             </div>
-            <div class="history-badge" style="color: ${color}">
-                Баланс: ${item.balanceAfter.toFixed(1)}ч
+            <div class="history-tag" style="color: ${color}">
+                ${tagText}
             </div>
         ;
         list.appendChild(div);
     });
 }
 
-// Сохранение в LocalStorage
 function saveState() {
-    localStorage.setItem('sleep_bank_state', JSON.stringify(state));
+    localStorage.setItem('sleep_bank_v3', JSON.stringify(state));
 }
 
-// Загрузка из LocalStorage
 function loadState() {
-    const saved = localStorage.getItem('sleep_bank_state');
+    const saved = localStorage.getItem('sleep_bank_v3');
     if (saved) {
         state = JSON.parse(saved);
+        recalculateGlobalState();
     }
 }
