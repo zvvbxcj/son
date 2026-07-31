@@ -126,7 +126,7 @@ function updateUI() {
     // Форматирование цифры баланса
     balanceSign.textContent = b > 0 ? '+' : '';
     balanceDisplay.textContent = b.toFixed(1);
-// Расчет процента аккумулятора (0% - 100%)
+    // Расчет процента аккумулятора (0% - 100%)
     let batVal = Math.round(((b - DEBT_LIMIT) / (0 - DEBT_LIMIT)) * 100);
     batVal = Math.max(5, Math.min(100, batVal));
     batteryPercent.textContent = ${batVal}%;
